@@ -1,0 +1,5 @@
+aiohttp
+aiohttp-cors
+aiortc
+google-cloud-speech
+python-socketio
