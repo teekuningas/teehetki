@@ -1,19 +1,22 @@
 import asyncio
 import json
-from aiohttp import web
-import aiohttp_cors
-from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
-from aiortc.contrib.media import MediaBlackhole
-# from google.cloud import speech_v1p1beta1 as speech
 import socketio
+import aiohttp_cors
+from aiohttp import web
+from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
+from aiortc.sdp import candidate_from_sdp
+from aiortc.contrib.media import MediaBlackhole
+from pprint import pprint
 
-# # Initialize Google Cloud Speech client
-# speech_client = speech.SpeechClient()
 
-# WebSocket server setup
-sio = socketio.AsyncServer(async_mode='aiohttp')
+sio = socketio.AsyncServer(async_mode='aiohttp', cors_allowed_origins=["http://localhost:3000"])
 app = web.Application()
 sio.attach(app)
+
+pc, blackholes = None, []
+counter = 0
+sids = []
+
 
 class AudioStreamTrack(MediaStreamTrack):
     kind = "audio"
@@ -30,58 +33,83 @@ class AudioStreamTrack(MediaStreamTrack):
         return frame
 
     async def send_to_stt(self, frame):
-        audio_data = frame.to_ndarray().tobytes()
-        # audio = speech.RecognitionAudio(content=audio_data)
-        # config = speech.RecognitionConfig(
-        #     encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        #     sample_rate_hertz=48000,
-        #     language_code="en-US"
-        # )
-        # response = speech_client.recognize(config=config, audio=audio)
-        # for result in response.results:
-        #     transcription = result.alternatives[0].transcript
-        #     await sio.emit('transcription', transcription)
-        await sio.emit('transcription', "Hello there!")
+        global counter
+        counter += 1
+        if (counter % 100 == 0):
+            await sio.emit('transcription', "Hello there!")
 
 @sio.event
 async def connect(sid, environ):
+    global sids
+    sids.append(sid)
     print('Client connected:', sid)
 
 @sio.event
 async def disconnect(sid):
+    global sids
+    sids.remove(sid)
     print('Client disconnected:', sid)
 
 @sio.event
-async def signal(sid, data):
-    params = json.loads(data)
+async def signal(sid, params):
     if 'sdp' in params:
         offer = RTCSessionDescription(sdp=params['sdp'], type=params['type'])
+
+        if pc is None or pc.signalingState == "closed":
+            create_peer_connection()
+
         await pc.setRemoteDescription(offer)
         answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
-        await sio.emit('signal', json.dumps({'sdp': pc.localDescription.sdp, 'type': pc.localDescription.type}))
+        await sio.emit('signal', {'sdp': pc.localDescription.sdp, 'type': pc.localDescription.type})
 
     elif 'candidate' in params:
-        candidate = params['candidate']
+        candidate_dict = params['candidate']
+        candidate = candidate_from_sdp(candidate_dict['candidate'])
+        candidate.sdpMid = candidate_dict['sdpMid']
+        candidate.sdpMLineIndex = candidate_dict['sdpMLineIndex']
         await pc.addIceCandidate(candidate)
 
 async def on_shutdown(app):
-    await sio.disconnect()
+    global sids
+    for sid in sids:
+        await sio.disconnect(sid)
 
-# WebRTC setup
-pc = RTCPeerConnection()
-pc.addTrack(AudioStreamTrack(MediaBlackhole()))
+def create_peer_connection():
+    global pc, blackholes
 
-# Web server setup
+    pc = RTCPeerConnection()
+    blackholes = []
+
+    @pc.on("iceconnectionstatechange")
+    async def on_iceconnectionstatechange():
+        print(f"ICE connection state is {pc.iceConnectionState}")
+
+    @pc.on("track")
+    async def on_track(track):
+        print(f"Received track: {track.kind}")
+        if track.kind == "audio":
+            wrapped_track = AudioStreamTrack(track)
+            pc.addTrack(wrapped_track)
+            blackhole = MediaBlackhole()
+            blackhole.addTrack(wrapped_track)
+            await blackhole.start()
+            blackholes.append(blackhole)
+
 app.router.add_get('/', lambda request: web.Response(text="WebRTC Server"))
 app.on_shutdown.append(on_shutdown)
 
-# # CORS setup
-# cors = aiohttp_cors.setup(app)
-# for route in list(app.router.routes()):
-#     cors.add(route, {
-#         "*": aiohttp_cors.ResourceOptions(allow_credentials=True, expose_headers="*", allow_headers="*")
-#     })
+cors = aiohttp_cors.setup(app, defaults={
+    "*": aiohttp_cors.ResourceOptions(
+        allow_credentials=True,
+        expose_headers="*",
+        allow_headers="*"
+    )
+})
+
+for route in app.router.routes():
+    if route.resource.canonical == '/':
+        cors.add(route)
 
 if __name__ == '__main__':
     web.run_app(app, port=5000)

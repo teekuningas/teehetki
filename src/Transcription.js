@@ -20,22 +20,36 @@ const Transcription = () => {
   }, []);
 
   const startStreaming = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const p = new SimplePeer({ initiator: true, stream });
-    
-    p.on('signal', (data) => {
-      socket.emit('signal', data);
-    });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const p = new SimplePeer({ initiator: true, stream });
 
-    socket.on('signal', (data) => {
-      p.signal(data);
-    });
+      const handleSignal = (data) => {
+        p.signal(data);
+      };
 
-    setPeer(p);
-    setIsStreaming(true);
+      p.on('signal', (data) => {
+        socket.emit('signal', data);
+      });
+
+      p.on('iceConnectionStateChange', () => {
+        console.log('ICE Connection State:', p.iceConnectionState);
+      });
+
+      socket.on('signal', handleSignal);
+
+      p.on('close', () => {
+        socket.off('signal', handleSignal);
+      });
+
+      setPeer(p);
+      setIsStreaming(true);
+    } catch (error) {
+      console.error('Error accessing media devices.', error);
+    }
   };
 
-  const stopStreaming = () => {
+    const stopStreaming = () => {
     if (peer) {
       peer.destroy();
       setPeer(null);
