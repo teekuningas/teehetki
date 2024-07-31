@@ -29,7 +29,7 @@ const AudioStream = () => {
         setAudio(audioElement);
       });
 
-      p.on('iceConnectionStateChange', () => {
+      p.on('iceconnectionstatechange', () => {
         console.log('ICE Connection State:', p.iceConnectionState);
       });
 
@@ -37,6 +37,10 @@ const AudioStream = () => {
 
       p.on('close', () => {
         socket.off('signal', handleSignal);
+        if (audio) {
+          audio.pause();
+          setAudio(null);
+        }
       });
 
       setPeer(p);

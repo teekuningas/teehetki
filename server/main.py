@@ -89,6 +89,7 @@ async def signal(sid, params):
         await sio.emit('signal', {'sdp': pc.localDescription.sdp, 'type': pc.localDescription.type})
 
     elif 'candidate' in params:
+        print(params['candidate'])
         candidate_dict = params['candidate']
         candidate = candidate_from_sdp(candidate_dict['candidate'])
         candidate.sdpMid = candidate_dict['sdpMid']
