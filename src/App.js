@@ -1,11 +1,11 @@
 import React from 'react';
-import Transcription from './Transcription';
+import AudioStream from './AudioStream';
 
 function App() {
   return (
     <div className="App">
       <h1>Real-Time Transcription</h1>
-      <Transcription />
+      <AudioStream />
     </div>
   );
 }

@@ -4,20 +4,10 @@ import io from 'socket.io-client';
 
 const socket = io('ws://localhost:5000');
 
-const Transcription = () => {
+const AudioStream = () => {
   const [isStreaming, setIsStreaming] = useState(false);
-  const [transcription, setTranscription] = useState('');
   const [peer, setPeer] = useState(null);
-
-  useEffect(() => {
-    socket.on('transcription', (data) => {
-      setTranscription((prev) => prev + ' ' + data);
-    });
-
-    return () => {
-      socket.off('transcription');
-    };
-  }, []);
+  const [audio, setAudio] = useState(null);
 
   const startStreaming = async () => {
     try {
@@ -30,6 +20,13 @@ const Transcription = () => {
 
       p.on('signal', (data) => {
         socket.emit('signal', data);
+      });
+
+      p.on('stream', (stream) => {
+        const audioElement = new Audio();
+        audioElement.srcObject = stream;
+        audioElement.play();
+        setAudio(audioElement);
       });
 
       p.on('iceConnectionStateChange', () => {
@@ -49,10 +46,14 @@ const Transcription = () => {
     }
   };
 
-    const stopStreaming = () => {
+  const stopStreaming = () => {
     if (peer) {
       peer.destroy();
       setPeer(null);
+    }
+    if (audio) {
+      audio.pause();
+      setAudio(null);
     }
     setIsStreaming(false);
   };
@@ -62,12 +63,8 @@ const Transcription = () => {
       <button onClick={isStreaming ? stopStreaming : startStreaming}>
         {isStreaming ? 'Stop' : 'Start'} Streaming
       </button>
-      <div>
-        <h3>Transcription:</h3>
-        <p>{transcription}</p>
-      </div>
     </div>
   );
 };
 
-export default Transcription;
+export default AudioStream;
