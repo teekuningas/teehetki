@@ -1,5 +1,5 @@
 import React from 'react';
-import AudioStream from './SimplifiedAudioStream';
+import AudioStream from './AudioStream';
 
 function App() {
   return (

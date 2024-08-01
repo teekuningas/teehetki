@@ -1,8 +1,9 @@
 import asyncio
-import socketio
-from aiohttp import web
 import numpy as np
 from collections import deque
+import aiohttp_cors
+from aiohttp import web
+import socketio
 
 sio = socketio.AsyncServer(async_mode='aiohttp', cors_allowed_origins=["http://localhost:3000"])
 app = web.Application()
@@ -11,63 +12,79 @@ sio.attach(app)
 class OutputAudioStream:
     def __init__(self):
         print("Initializing output audio stream")
-        self.sample_rate = 48000
-        self.frame_duration = 0.02  # 20ms
+        self.sample_rate = 8000
+        self.frame_duration = 1.0
         self.frame_size = int(self.sample_rate * self.frame_duration)
-        self.silence = np.zeros(self.frame_size, dtype=np.float32)  # 20ms of silence
+        self.silence = np.zeros(self.frame_size, dtype=np.float32)  # 2 seconds of silence
         self.buffer = deque([self.silence] * (self.sample_rate // self.frame_size))
+        self.lock = asyncio.Lock()
 
-    def get_audio_frame(self):
-        if not self.buffer:
-            self.buffer.extend([self.silence] * (self.sample_rate // self.frame_size))
-        frame = self.buffer.popleft()
+    async def get_audio_frame(self):
+        async with self.lock:
+            if not self.buffer:
+                self.buffer.append(self.silence)
+            frame = self.buffer.popleft()
         return frame
 
-    def inject_audio(self, audio_data):
+    async def inject_audio(self, audio_data):
         num_frames = len(audio_data) // self.frame_size
         audio_frames = np.split(audio_data[:num_frames * self.frame_size], num_frames)
-        for frame in audio_frames:
-            self.buffer.append(frame)
-            if len(self.buffer) > (self.sample_rate // self.frame_size):
-                self.buffer.popleft()
+        async with self.lock:
+            for frame in audio_frames:
+                self.buffer.append(frame)
 
-# output_audio_stream = OutputAudioStream()
-# This should be run in a loop
-# output_audio_stream.inject_audio(audio_data)
-# sio.start_background_task(send_audio_to_client, sid)
+output_audio_stream = OutputAudioStream()
 
-async def audio_injector():
-    while True:
-        await asyncio.sleep(5)
-        sine_wave = generate_sine_wave(440, 2)  # 440 Hz for 2 seconds
-        print('Injecting sine wave:', sine_wave) # Debug
-        output_audio_stream.inject_audio(sine_wave)
-
-def generate_sine_wave(frequency, duration, sample_rate=48000):
+def generate_sine_wave(frequency, duration, sample_rate):
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    return np.sin(2 * np.pi * frequency * t).astype(np.float32)
+    wave = np.sin(2 * np.pi * frequency * t).astype(np.float32)
+    return wave
 
 @sio.event
 async def connect(sid, environ):
-    print('Client connected:', sid) # Debug
+    print('Client connected:', sid)  # Debug
+
+    sio.start_background_task(send_audio_to_client, sid)
+    sio.start_background_task(inject_sine_waves, sid)
 
 @sio.event
 async def disconnect(sid):
-    print('Client disconnected:', sid) # Debug
+    print('Client disconnected:', sid)  # Debug
 
 @sio.event
 async def audio(sid, data):
     audio_data = np.array(data, dtype=np.float32)
-    print('Received audio data from client:', audio_data) # Debug
+    print('Received audio data from client:', audio_data)  # Debug
+
+async def inject_sine_waves(sid):
+    sample_rate = output_audio_stream.sample_rate
+    await asyncio.sleep(1)
+    while True:
+        wave = generate_sine_wave(440, 5, sample_rate)
+        await output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(7)
 
 async def send_audio_to_client(sid):
     while True:
-        await asyncio.sleep(0.02) # 20ms
-        audio_frame = output_audio_stream.get_audio_frame()
-        print('Sending audio data to client:', audio_frame) # Debug
+        await asyncio.sleep(output_audio_stream.frame_duration)
+        audio_frame = await output_audio_stream.get_audio_frame()
+
+        print('Sending audio data to client:', audio_frame)  # Debug
         await sio.emit('audio', audio_frame.tolist(), room=sid)
 
 app.router.add_get('/', lambda request: web.Response(text="WebSocket Audio Server"))
+
+cors = aiohttp_cors.setup(app, defaults={
+    "*": aiohttp_cors.ResourceOptions(
+        allow_credentials=True,
+        expose_headers="*",
+        allow_headers="*"
+    )
+})
+
+for route in app.router.routes():
+    if route.resource.canonical == '/':
+        cors.add(route)
 
 if __name__ == '__main__':
     web.run_app(app, port=5000)
