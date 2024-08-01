@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 const AudioStream = () => {
   useEffect(() => {
     // Connect to the WebSocket server
-    const socket = io.connect({transports: ['websocket']});
+    const socket = io.connect('ws://localhost:5000');
 
     // Handle the connect event
     socket.on('connect', () => {
