@@ -1,49 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import SimplePeer from 'simple-peer';
 import io from 'socket.io-client';
 
+console.log("Trying to connect!");
 const socket = io('ws://localhost:5000');
+console.log("Connected!");
 
 const AudioStream = () => {
   const [isStreaming, setIsStreaming] = useState(false);
-  const [peer, setPeer] = useState(null);
-  const [audio, setAudio] = useState(null);
+  const [audioContext, setAudioContext] = useState(null);
+  const [mediaStream, setMediaStream] = useState(null);
+  const [audioSource, setAudioSource] = useState(null);
+  const [audioProcessor, setAudioProcessor] = useState(null);
+  const [audioQueue, setAudioQueue] = useState([]);
+
+  useEffect(() => {
+    socket.on('audio', (audioData) => {
+      console.log('Received audio data:', audioData);  // Debug
+      if (audioContext) {
+        const float32Array = new Float32Array(audioData);
+        setAudioQueue(prevQueue => [...prevQueue, float32Array]);
+      }
+    });
+
+    return () => {
+      socket.off('audio');
+    };
+  }, [audioContext]);
+
+  useEffect(() => {
+    if (audioContext && audioQueue.length > 0) {
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (e) => {
+        if (audioQueue.length > 0) {
+          const outputBuffer = e.outputBuffer.getChannelData(0);
+          const inputBuffer = audioQueue.shift();
+          outputBuffer.set(inputBuffer);
+        }
+      };
+      processor.connect(audioContext.destination);
+      setAudioProcessor(processor);
+    }
+
+    return () => {
+      if (audioProcessor) {
+        audioProcessor.disconnect();
+      }
+    };
+  }, [audioContext, audioQueue]);
 
   const startStreaming = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const p = new SimplePeer({ initiator: true, stream });
+      const context = new AudioContext();
+      await context.resume(); // Ensure the AudioContext is running
+      const source = context.createMediaStreamSource(stream);
 
-      const handleSignal = (data) => {
-        p.signal(data);
+      const processor = context.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (e) => {
+        const audioData = e.inputBuffer.getChannelData(0);
+        const audioArray = Array.from(audioData);
+        socket.emit('audio', audioArray);
       };
 
-      p.on('signal', (data) => {
-        socket.emit('signal', data);
-      });
+      source.connect(processor);
+      processor.connect(context.destination);
 
-      p.on('stream', (stream) => {
-        const audioElement = new Audio();
-        audioElement.srcObject = stream;
-        audioElement.play();
-        setAudio(audioElement);
-      });
-
-      p.on('iceconnectionstatechange', () => {
-        console.log('ICE Connection State:', p.iceConnectionState);
-      });
-
-      socket.on('signal', handleSignal);
-
-      p.on('close', () => {
-        socket.off('signal', handleSignal);
-        if (audio) {
-          audio.pause();
-          setAudio(null);
-        }
-      });
-
-      setPeer(p);
+      setAudioContext(context);
+      setMediaStream(stream);
+      setAudioSource(source);
+      setAudioProcessor(processor);
       setIsStreaming(true);
     } catch (error) {
       console.error('Error accessing media devices.', error);
@@ -51,14 +76,22 @@ const AudioStream = () => {
   };
 
   const stopStreaming = () => {
-    if (peer) {
-      peer.destroy();
-      setPeer(null);
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
     }
-    if (audio) {
-      audio.pause();
-      setAudio(null);
+    if (audioSource) {
+      audioSource.disconnect();
     }
+    if (audioProcessor) {
+      audioProcessor.disconnect();
+    }
+    if (audioContext) {
+      audioContext.close();
+    }
+    setAudioContext(null);
+    setMediaStream(null);
+    setAudioSource(null);
+    setAudioProcessor(null);
     setIsStreaming(false);
   };
 

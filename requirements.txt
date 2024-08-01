@@ -1,6 +1,4 @@
 aiohttp
 aiohttp-cors
-aiortc
 numpy
-google-cloud-speech
-python-socketio
+python-socketio==5.11.3
