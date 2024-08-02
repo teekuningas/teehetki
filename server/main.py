@@ -1,6 +1,5 @@
 import asyncio
 import numpy as np
-from collections import deque
 import aiohttp_cors
 from aiohttp import web
 import socketio
@@ -12,26 +11,52 @@ sio.attach(app)
 class OutputAudioStream:
     def __init__(self):
         print("Initializing output audio stream")
+
+        self.lock = asyncio.Lock()
+
         self.sample_rate = 8000
         self.frame_duration = 0.1
         self.frame_size = int(self.sample_rate * self.frame_duration)
-        self.silence = np.zeros(self.frame_size, dtype=np.float32)  # 2 seconds of silence
-        self.buffer = deque([self.silence] * (self.sample_rate // self.frame_size))
-        self.lock = asyncio.Lock()
+
+        self.n_frames = 100
+        self.buffer_length = self.n_frames * self.frame_size
+        self.silence = np.zeros(self.frame_size, dtype=np.float32)
+        self.background_audio = np.tile(self.silence, self.n_frames)
+        self.current_index = 0
+
+        self.injected_audio = None
+        self.injected_audio_index = 0
 
     async def get_audio_frame(self):
         async with self.lock:
-            if not self.buffer:
-                self.buffer.append(self.silence)
-            frame = self.buffer.popleft()
+
+            frame = np.copy(self.background_audio[self.current_index * self.frame_size : (self.current_index + 1) * self.frame_size])
+
+            # Mix in the injected audio if it exists
+            if self.injected_audio is not None:
+                if (self.injected_audio_index + 1) * self.frame_size < len(self.injected_audio):
+                    inject_frame = self.injected_audio[self.injected_audio_index * self.frame_size : (self.injected_audio_index + 1) * self.frame_size]
+                    self.injected_audio_index += 1
+                    frame += inject_frame
+                else:
+                    self.injected_audio = None
+
+            self.current_index += 1
+            if self.current_index >= self.n_frames:
+                self.current_index = 0
+
         return frame
 
     async def inject_audio(self, audio_data):
-        num_frames = len(audio_data) // self.frame_size
-        audio_frames = np.split(audio_data[:num_frames * self.frame_size], num_frames)
         async with self.lock:
-            for frame in audio_frames:
-                self.buffer.append(frame)
+            total_length = len(audio_data)
+            if total_length > self.buffer_length:
+                raise ValueError("Injected audio is longer than the buffer length")
+            if total_length % self.frame_size != 0:
+                raise ValueError("Injected audio is not a multiple of frame size")
+
+            self.injected_audio = audio_data
+            self.injected_audio_index = 0
 
 output_audio_stream = OutputAudioStream()
 
@@ -43,7 +68,6 @@ def generate_sine_wave(frequency, duration, sample_rate):
 @sio.event
 async def connect(sid, environ):
     print('Client connected:', sid)
-
     sio.start_background_task(send_audio_to_client, sid)
     sio.start_background_task(inject_sine_waves, sid)
 
@@ -54,22 +78,32 @@ async def disconnect(sid):
 @sio.event
 async def audio(sid, data):
     audio_data = np.array(data, dtype=np.float32)
-    # print('Received audio data from client:', audio_data)
 
 async def inject_sine_waves(sid):
     sample_rate = output_audio_stream.sample_rate
     await asyncio.sleep(1)
     while True:
-        wave = generate_sine_wave(440, 5, sample_rate)
+        wave = generate_sine_wave(440, 1, sample_rate)
         await output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(7)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(550, 1, sample_rate)
+        await output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(660, 1, sample_rate)
+        await output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(770, 1, sample_rate)
+        await output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(880, 1, sample_rate)
+        await output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+
 
 async def send_audio_to_client(sid):
     while True:
         await asyncio.sleep(output_audio_stream.frame_duration)
         audio_frame = await output_audio_stream.get_audio_frame()
-
-        # print('Sending audio data to client:', audio_frame)
         await sio.emit('audio', audio_frame.tolist(), room=sid)
 
 app.router.add_get('/', lambda request: web.Response(text="WebSocket Audio Server"))
