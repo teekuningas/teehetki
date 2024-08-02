@@ -58,7 +58,7 @@ class OutputAudioStream:
             self.injected_audio = audio_data
             self.injected_audio_index = 0
 
-output_audio_stream = OutputAudioStream()
+output_audio_streams = {}
 
 def generate_sine_wave(frequency, duration, sample_rate):
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -68,43 +68,50 @@ def generate_sine_wave(frequency, duration, sample_rate):
 @sio.event
 async def connect(sid, environ):
     print('Client connected:', sid)
+    output_audio_streams[sid] = OutputAudioStream()
     sio.start_background_task(send_audio_to_client, sid)
     sio.start_background_task(inject_sine_waves, sid)
 
 @sio.event
 async def disconnect(sid):
     print('Client disconnected:', sid)
+    del output_audio_streams[sid]
 
 @sio.event
 async def audio(sid, data):
     audio_data = np.array(data, dtype=np.float32)
 
 async def inject_sine_waves(sid):
-    sample_rate = output_audio_stream.sample_rate
-    await asyncio.sleep(1)
-    while True:
-        wave = generate_sine_wave(440, 1, sample_rate)
-        await output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = generate_sine_wave(550, 1, sample_rate)
-        await output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = generate_sine_wave(660, 1, sample_rate)
-        await output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = generate_sine_wave(770, 1, sample_rate)
-        await output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = generate_sine_wave(880, 1, sample_rate)
-        await output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-
+    while sid in output_audio_streams:
+        try:
+            sample_rate = output_audio_streams[sid].sample_rate
+            await asyncio.sleep(1)
+            wave = generate_sine_wave(440, 1, sample_rate)
+            await output_audio_streams[sid].inject_audio(wave)
+            await asyncio.sleep(1)
+            wave = generate_sine_wave(550, 1, sample_rate)
+            await output_audio_streams[sid].inject_audio(wave)
+            await asyncio.sleep(1)
+            wave = generate_sine_wave(660, 1, sample_rate)
+            await output_audio_streams[sid].inject_audio(wave)
+            await asyncio.sleep(1)
+            wave = generate_sine_wave(770, 1, sample_rate)
+            await output_audio_streams[sid].inject_audio(wave)
+            await asyncio.sleep(1)
+            wave = generate_sine_wave(880, 1, sample_rate)
+            await output_audio_streams[sid].inject_audio(wave)
+            await asyncio.sleep(1)
+        except KeyError:
+            pass
 
 async def send_audio_to_client(sid):
-    while True:
-        await asyncio.sleep(output_audio_stream.frame_duration)
-        audio_frame = await output_audio_stream.get_audio_frame()
-        await sio.emit('audio', audio_frame.tolist(), room=sid)
+    while sid in output_audio_streams:
+        try:
+            await asyncio.sleep(output_audio_streams[sid].frame_duration)
+            audio_frame = await output_audio_streams[sid].get_audio_frame()
+            await sio.emit('audio', audio_frame.tolist(), room=sid)
+        except KeyError:
+            pass
 
 app.router.add_get('/', lambda request: web.Response(text="WebSocket Audio Server"))
 
