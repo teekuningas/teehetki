@@ -5,33 +5,40 @@ const socket = io('ws://localhost:5000');
 
 const AudioStream = () => {
   const [audioContext, setAudioContext] = useState(null);
+  const [audioNode, setAudioNode] = useState(null);
 
   useEffect(() => {
-    const audioContext = new AudioContext();
-    setAudioContext(audioContext);
-
-    socket.on('audio', async (audioData) => {
-      if (audioContext) {
-        const float32Array = new Float32Array(audioData);
-        playAudio(audioContext, float32Array);
-      }
-    });
-
-    return () => {                                                                                           if (audioContext) {                                                                                      audioContext.close();                                                                                }
-      socket.off('audio');
+    const initAudioContext = async () => {
+      const audioContext = new AudioContext({sampleRate: 8000});
+      setAudioContext(audioContext);
+      await audioContext.audioWorklet.addModule('./processor.js');
+      const audioNode = new AudioWorkletNode(audioContext, 'audio-processor');
+      audioNode.connect(audioContext.destination);
+      setAudioNode(audioNode);
     };
 
+    initAudioContext();
+
+    return () => {
+      if (audioContext) {
+        audioContext.close();
+      }
+      socket.off('audio');
+    };
   }, []);
 
+  useEffect(() => {
+    if (audioNode) {
+      socket.on('audio', (data) => {
+        const float32Array = new Float32Array(data);
+        audioNode.port.postMessage({ message: 'audioData', audioData: float32Array });
+      });
 
-  const playAudio = (audioContext, audioData) => {
-    const audioBuffer = audioContext.createBuffer(1, audioData.length, 8000);
-    audioBuffer.copyToChannel(audioData, 0);
-    const player = audioContext.createBufferSource();
-    player.buffer = audioBuffer;
-    player.connect(audioContext.destination);
-    player.start(0);
-  };
+      return () => {
+        socket.off('audio');
+      };
+    }
+  }, [audioNode]);
 
   return (
     <div>

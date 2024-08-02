@@ -13,7 +13,7 @@ class OutputAudioStream:
     def __init__(self):
         print("Initializing output audio stream")
         self.sample_rate = 8000
-        self.frame_duration = 1.0
+        self.frame_duration = 0.1
         self.frame_size = int(self.sample_rate * self.frame_duration)
         self.silence = np.zeros(self.frame_size, dtype=np.float32)  # 2 seconds of silence
         self.buffer = deque([self.silence] * (self.sample_rate // self.frame_size))
@@ -42,19 +42,19 @@ def generate_sine_wave(frequency, duration, sample_rate):
 
 @sio.event
 async def connect(sid, environ):
-    print('Client connected:', sid)  # Debug
+    print('Client connected:', sid)
 
     sio.start_background_task(send_audio_to_client, sid)
     sio.start_background_task(inject_sine_waves, sid)
 
 @sio.event
 async def disconnect(sid):
-    print('Client disconnected:', sid)  # Debug
+    print('Client disconnected:', sid)
 
 @sio.event
 async def audio(sid, data):
     audio_data = np.array(data, dtype=np.float32)
-    print('Received audio data from client:', audio_data)  # Debug
+    # print('Received audio data from client:', audio_data)
 
 async def inject_sine_waves(sid):
     sample_rate = output_audio_stream.sample_rate
@@ -69,7 +69,7 @@ async def send_audio_to_client(sid):
         await asyncio.sleep(output_audio_stream.frame_duration)
         audio_frame = await output_audio_stream.get_audio_frame()
 
-        print('Sending audio data to client:', audio_frame)  # Debug
+        # print('Sending audio data to client:', audio_frame)
         await sio.emit('audio', audio_frame.tolist(), room=sid)
 
 app.router.add_get('/', lambda request: web.Response(text="WebSocket Audio Server"))
