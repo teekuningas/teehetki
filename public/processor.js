@@ -4,8 +4,9 @@ class AudioProcessor extends AudioWorkletProcessor {
         super();
         this.buffer = new Float32Array();
         this.playbackStarted = false;
-        this.highThreshold = 8000; // 1 second worth of samples at 8000 Hz
-        this.lowThreshold = 4000;  // 0.5 second worth of samples at 8000 Hz
+        this.sampleRate = 8000;
+        this.highThreshold = this.sampleRate; // 1 second worth of samples
+        this.lowThreshold = this.sampleRate / 2; // 0.5 second worth of samples
 
         // Receive audio data from the main thread, and add it to the buffer
         this.port.onmessage = (event) => {
@@ -25,6 +26,9 @@ class AudioProcessor extends AudioWorkletProcessor {
         const bufferLength = this.buffer.length;
 
         if (this.playbackStarted) {
+            // If getting samples in too low rate,
+            // prefer larger breaks infrequently
+            // over short breaks frequently.
             if (bufferLength < this.lowThreshold) {
                 this.playbackStarted = false;
             } else {

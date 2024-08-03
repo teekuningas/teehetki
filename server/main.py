@@ -107,7 +107,9 @@ async def inject_sine_waves(sid):
 async def send_audio_to_client(sid):
     while sid in output_audio_streams:
         try:
-            await asyncio.sleep(output_audio_streams[sid].frame_duration)
+            # Wait little less than frame duration to account for get_audio_frame
+            wait_for = output_audio_streams[sid].frame_duration - 0.001
+            await asyncio.sleep(wait_for)
             audio_frame = await output_audio_streams[sid].get_audio_frame()
             await sio.emit('audio', audio_frame.tolist(), room=sid)
         except KeyError:
