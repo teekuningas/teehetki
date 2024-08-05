@@ -2,13 +2,13 @@ Ei ihan toimi viellä, mutta näin se lähtis käyntiin!
 
 Ensin yhdessä terminaalissa openai-tyyppinen api pyörimään:
 ```
-make run_localai
+make run_api
 ```
 Sitten toisessa python-palvelin:
 ```
-make nix-run_server
+make run_server
 ```
 Sitten vielä clientti:
 ```
-make nix-run_client
+make run_client
 ```

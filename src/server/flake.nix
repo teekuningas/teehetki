@@ -1,5 +1,5 @@
 {
-  description = "Teehetki deps";
+  description = "Teehetki server deps";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
@@ -14,7 +14,6 @@
     {
       devShells.default = pkgs.mkShell {
         buildInputs = [
-          pkgs.nodejs
           pkgs.python3
           pkgs.stdenv.cc.cc.lib
         ];
@@ -30,11 +29,6 @@
           if [ -f "requirements.txt" ]; then
             echo "Installing Python dependencies..."
             pip install -r requirements.txt
-          fi
-
-          if [ -f "package.json" ]; then
-            echo "Installing npm dependencies..."
-            npm install
           fi
 
           if [[ "$OSTYPE" == "darwin"* ]]; then
