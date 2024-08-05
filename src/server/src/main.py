@@ -58,7 +58,43 @@ class OutputAudioStream:
             self.injected_audio = audio_data
             self.injected_audio_index = 0
 
+class AudioAgent:
+    def __init__(self, output_audio_stream):
+        self.output_audio_stream = output_audio_stream
+        self.input_buffer = []
+
+        self.injection_flag = False
+
+    async def process_input_audio(self, audio_data):
+        self.input_buffer.append(audio_data)
+        # Process the input audio and inject something to the output stream
+        # For now, we just inject sine waves periodically
+        if not self.injection_flag:
+            self.injection_flag = True
+            await self.inject_sine_waves()
+
+    async def inject_sine_waves(self):
+        sample_rate = self.output_audio_stream.sample_rate
+        wave = generate_sine_wave(440, 1, sample_rate)
+        await self.output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(550, 1, sample_rate)
+        await self.output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(660, 1, sample_rate)
+        await self.output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(770, 1, sample_rate)
+        await self.output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+        wave = generate_sine_wave(880, 1, sample_rate)
+        await self.output_audio_stream.inject_audio(wave)
+        await asyncio.sleep(1)
+
+        self.injection_flag = False
+
 output_audio_streams = {}
+audio_agents = {}
 
 def generate_sine_wave(frequency, duration, sample_rate):
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -69,40 +105,19 @@ def generate_sine_wave(frequency, duration, sample_rate):
 async def connect(sid, environ):
     print('Client connected:', sid)
     output_audio_streams[sid] = OutputAudioStream()
+    audio_agents[sid] = AudioAgent(output_audio_streams[sid])
     sio.start_background_task(send_audio_to_client, sid)
-    sio.start_background_task(inject_sine_waves, sid)
 
 @sio.event
 async def disconnect(sid):
     print('Client disconnected:', sid)
     del output_audio_streams[sid]
+    del audio_agents[sid]
 
 @sio.event
-async def audio(sid, data):
-    audio_data = np.array(data, dtype=np.float32)
-
-async def inject_sine_waves(sid):
-    while sid in output_audio_streams:
-        try:
-            sample_rate = output_audio_streams[sid].sample_rate
-            await asyncio.sleep(1)
-            wave = generate_sine_wave(440, 1, sample_rate)
-            await output_audio_streams[sid].inject_audio(wave)
-            await asyncio.sleep(1)
-            wave = generate_sine_wave(550, 1, sample_rate)
-            await output_audio_streams[sid].inject_audio(wave)
-            await asyncio.sleep(1)
-            wave = generate_sine_wave(660, 1, sample_rate)
-            await output_audio_streams[sid].inject_audio(wave)
-            await asyncio.sleep(1)
-            wave = generate_sine_wave(770, 1, sample_rate)
-            await output_audio_streams[sid].inject_audio(wave)
-            await asyncio.sleep(1)
-            wave = generate_sine_wave(880, 1, sample_rate)
-            await output_audio_streams[sid].inject_audio(wave)
-            await asyncio.sleep(1)
-        except KeyError:
-            pass
+async def audio_input(sid, data):
+    audio_data = np.frombuffer(data, dtype=np.float32)
+    await audio_agents[sid].process_input_audio(audio_data)
 
 async def send_audio_to_client(sid):
     while sid in output_audio_streams:
