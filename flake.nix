@@ -1,17 +1,18 @@
 {
-  description = "Development environment with npm and Python";
+  description = "Teehetki deps";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
     let
-      system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
     in
     {
-      devShells.${system}.default = pkgs.mkShell {
+      devShells.default = pkgs.mkShell {
         buildInputs = [
           pkgs.nodejs
           pkgs.python3
@@ -36,8 +37,14 @@
             npm install
           fi
 
-          export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib/"
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS specific environment setup
+            export DYLD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib/"
+          else
+            # Linux specific environment setup
+            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib/"
+          fi
         '';
       };
-    };
+    });
 }
