@@ -1,8 +1,11 @@
 watch:
 	python src/main.py
 
+shell:
+	nix develop
+
 .PHONY: nix-%
 nix-%:
-	nix develop $(NIX_OPTIONS)\
+	nix develop\
 		--command $(MAKE) $*
 

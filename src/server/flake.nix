@@ -14,7 +14,7 @@
     {
       devShells.default = pkgs.mkShell {
         buildInputs = [
-          pkgs.python3
+          (pkgs.python3.withPackages (ps: [ps.black]))
           pkgs.stdenv.cc.cc.lib
         ];
 
