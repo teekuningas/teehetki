@@ -4,6 +4,9 @@ watch:
 shell:
 	nix develop
 
+format:
+	black src
+
 .PHONY: nix-%
 nix-%:
 	nix develop\

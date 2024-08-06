@@ -2,6 +2,7 @@ import numpy as np
 import datetime
 import asyncio
 
+
 class AudioAgent:
     def __init__(self, output_audio_stream):
         self.output_audio_stream = output_audio_stream
@@ -46,7 +47,9 @@ class AudioAgent:
         input_wave = np.nan_to_num(input_wave, nan=0.0)
         frame_size = self.output_audio_stream.frame_size
         padding_needed = (frame_size - (len(input_wave) % frame_size)) % frame_size
-        padded_wave = np.pad(input_wave, (0, padding_needed), mode='constant', constant_values=0)
+        padded_wave = np.pad(
+            input_wave, (0, padding_needed), mode="constant", constant_values=0
+        )
         await self.output_audio_stream.inject_audio(padded_wave)
 
     def generate_sine_wave(self, frequency, duration, sample_rate):
