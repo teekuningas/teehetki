@@ -3,10 +3,11 @@ import './styles.css';
 import io from 'socket.io-client';
 
 const AudioStream = () => {
-  const [buttonClicked, setButtonClicked] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [audioNode, setAudioNode] = useState(null);
   const [micNode, setMicNode] = useState(null);
   const [analyserNode, setAnalyserNode] = useState(null);
+  const [threshold, setThreshold] = useState(0.001);
 
   const audioContextRef = useRef(null);
   const socketRef = useRef(null);
@@ -40,12 +41,15 @@ const AudioStream = () => {
       source.connect(analyserNode);
     };
 
-    if (buttonClicked) {
+    if (isOpen) {
       console.log("Opening audio context.");
       initAudioContext();
       console.log("Opening socket.");
       const newSocket = io('ws://localhost:5000');
       socketRef.current = newSocket;
+
+      // Send initial threshold value to the server
+      newSocket.emit('threshold_update', threshold);
     } else {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         console.log("Closing audio context.");
@@ -76,7 +80,7 @@ const AudioStream = () => {
         socketRef.current.close();
       }
     };
-  }, [buttonClicked]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (audioNode && socketRef.current) {
@@ -106,6 +110,7 @@ const AudioStream = () => {
     }
   }, [micNode]);
 
+
   useEffect(() => {
     if (analyserNode) {
       const canvas = canvasRef.current;
@@ -120,53 +125,67 @@ const AudioStream = () => {
 
         canvasContext.clearRect(0, 0, canvas.width, canvas.height);
 
+        let sumOfSquares = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const value = dataArray[i] - 128;
+          sumOfSquares += value * value;
+        }
+        const rms = Math.sqrt(sumOfSquares / bufferLength);
+
         canvasContext.fillStyle = 'rgb(200, 200, 200)';
         canvasContext.fillRect(0, 0, canvas.width, canvas.height);
 
-        canvasContext.lineWidth = 2;
-        canvasContext.strokeStyle = 'rgb(0, 0, 0)';
+        const barWidth = (rms / 128) * canvas.width;
 
-        canvasContext.beginPath();
-        const sliceWidth = canvas.width * 1.0 / bufferLength;
-        let x = 0;
-
-        for (let i = 0; i < bufferLength; i++) {
-          const v = dataArray[i] / 128.0;
-          const y = v * canvas.height / 2;
-
-          if (i === 0) {
-            canvasContext.moveTo(x, y);
-          } else {
-            canvasContext.lineTo(x, y);
-          }
-
-          x += sliceWidth;
-        }
-
-        canvasContext.lineTo(canvas.width, canvas.height / 2);
-        canvasContext.stroke();
+        canvasContext.fillStyle = 'rgb(0, 0, 0)';
+        canvasContext.fillRect(0, 0, barWidth, canvas.height);
       };
 
       renderFrame();
     }
   }, [analyserNode]);
 
-  const buttonHandler = () => {
-    setButtonClicked(prevState => !prevState);
+  const startButtonHandler = () => {
+    setIsOpen(prevState => !prevState);
+  };
+
+  const thresholdHandler = () => {
+    if (socketRef.current) {
+      socketRef.current.emit('threshold_update', threshold);
+    }
+  };
+
+  const handleThresholdChange = (event) => {
+    setThreshold(parseFloat(event.target.value));
   };
 
   return (
     <div className="container">
-      <div className="description">
-        <p>Hello there tea party</p>
+      <div className="title">
+        <h1>Teehetki</h1>
       </div>
-      <div className="button">
-        <button onClick={buttonHandler}>
-          {buttonClicked ? 'Stop' : 'Start'}
+      <div className="start-button">
+        <button onClick={startButtonHandler}>
+          {isOpen ? 'Stop' : 'Start'}
+        </button>
+      </div>
+      <div className="threshold-slider">
+        <label>VAD threshold:</label>
+        <input
+          type="range"
+          min="0.0001"
+          max="0.1"
+          step="0.0001"
+          value={threshold}
+          onChange={handleThresholdChange}
+        />
+        <label>Value: {threshold}</label>
+        <button onClick={thresholdHandler} disabled={!isOpen}>
+          Set threshold
         </button>
       </div>
       <div className="canvas">
-        <canvas ref={canvasRef} width="300" height="100"></canvas>
+        <canvas ref={canvasRef}></canvas>
       </div>
     </div>
   );

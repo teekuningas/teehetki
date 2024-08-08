@@ -5,7 +5,8 @@ from vad import VAD
 
 
 class AudioAgent:
-    def __init__(self, output_audio_stream):
+    def __init__(self, sid, output_audio_stream):
+        self.sid = sid
         self.output_audio_stream = output_audio_stream
         self.sample_rate = output_audio_stream.sample_rate
         self.frame_size = output_audio_stream.frame_size
@@ -14,8 +15,10 @@ class AudioAgent:
 
         self.injection_flag = False
 
-    async def process_input_audio(self, audio_data):
+    async def update_vad_threshold(self, threshold):
+        self.vad.update_threshold(threshold)
 
+    async def process_input_audio(self, audio_data):
         if self.injection_flag:
             return
 
@@ -28,7 +31,7 @@ class AudioAgent:
 
             segment = result['segment']
 
-            print(f"Detected a speech segment of length {len(segment)}!")
+            print(f"{self.sid}: Detected a speech segment of length {len(segment)}!")
 
             # wait for one second before playing
             await asyncio.sleep(1)

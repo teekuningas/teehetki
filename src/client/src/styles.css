@@ -1,7 +1,43 @@
 .container {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  width: 80%;
+  margin: 0 auto;
 }
-.container div {
-  margin-top: 1em;
+
+.container > div {
+  width: 100%;
+  margin-bottom: 1em;
+}
+
+.container .title h1,
+.container .description p,
+.container .start-button button,
+.container .threshold-slider label,
+.container .threshold-slider input,
+.container .threshold-slider button,
+.container .canvas {
+  display: block;
+  width: 100%;
+}
+
+.container .threshold-slider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.container .threshold-slider input {
+  width: 100%;
+}
+
+canvas {
+  width: 100%;
+  height: 100%
+}
+.canvas {
+  height: 20px;
+  margin-top: 20px;
+  border: 1px solid #000;
 }

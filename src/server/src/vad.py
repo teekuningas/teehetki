@@ -2,13 +2,16 @@
 import numpy as np
 
 class VAD:
-    def __init__(self, sample_rate, threshold=0.0005, energy_window_size=2.0, min_speech_length=1.0, max_buffer_length=120.0):
+    def __init__(self, sample_rate, threshold=0.001, energy_window_size=2.0, min_speech_length=1.0, max_buffer_length=120.0):
         self.sample_rate = sample_rate
         self.threshold = threshold
         self.energy_window_size = int(energy_window_size * sample_rate)
         self.min_speech_length = int(min_speech_length * sample_rate)
         self.max_buffer_length = int(max_buffer_length * sample_rate)
         self.reset()
+
+    def update_threshold(self, threshold):
+        self.threshold = threshold
 
     def detect(self, data):
         self.buffer = np.concatenate([self.buffer, data])

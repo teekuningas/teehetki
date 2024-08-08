@@ -17,7 +17,6 @@ audio_agents = {}
 
 class OutputAudioStream:
     def __init__(self):
-        print("Initializing output audio stream")
 
         self.lock = asyncio.Lock()
 
@@ -59,15 +58,15 @@ class OutputAudioStream:
 
 @sio.event
 async def connect(sid, environ):
-    print("Client connected:", sid)
+    print(f"{sid}: Client connected.")
     output_audio_streams[sid] = OutputAudioStream()
-    audio_agents[sid] = AudioAgent(output_audio_streams[sid])
+    audio_agents[sid] = AudioAgent(sid, output_audio_streams[sid])
     sio.start_background_task(send_audio_to_client, sid)
 
 
 @sio.event
 async def disconnect(sid):
-    print("Client disconnected:", sid)
+    print(f"{sid}: Client disconnected.")
     del output_audio_streams[sid]
     del audio_agents[sid]
 
@@ -76,6 +75,14 @@ async def disconnect(sid):
 async def audio_input(sid, data):
     audio_data = np.frombuffer(data, dtype=np.float32)
     await audio_agents[sid].process_input_audio(audio_data)
+
+
+@sio.event
+async def threshold_update(sid, data):
+    print(f"{sid}: Updated threshold to {data}")
+    threshold = float(data)
+    if sid in audio_agents:
+        await audio_agents[sid].update_vad_threshold(threshold)
 
 
 async def send_audio_to_client(sid):
