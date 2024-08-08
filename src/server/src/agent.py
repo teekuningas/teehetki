@@ -1,58 +1,48 @@
 import numpy as np
-import datetime
 import asyncio
+
+from vad import VAD
 
 
 class AudioAgent:
     def __init__(self, output_audio_stream):
         self.output_audio_stream = output_audio_stream
+        self.sample_rate = output_audio_stream.sample_rate
+        self.frame_size = output_audio_stream.frame_size
 
-        self.input_buffer = np.array([], dtype=np.float32)
+        self.vad = VAD(sample_rate=self.sample_rate)
 
-        self.beginning = datetime.datetime.now()
         self.injection_flag = False
 
     async def process_input_audio(self, audio_data):
-        if not self.injection_flag:
-            self.input_buffer = np.concatenate([self.input_buffer, audio_data])
 
-        elapsed = datetime.datetime.now() - self.beginning
+        if self.injection_flag:
+            return
 
-        if elapsed > datetime.timedelta(seconds=10):
-            if not self.injection_flag:
-                self.injection_flag = True
-                await self.inject_sine_waves()
+        result = self.vad.detect(audio_data)
 
-    async def inject_sine_waves(self):
-        # Test playing some sine waves
-        sample_rate = self.output_audio_stream.sample_rate
-        wave = self.generate_sine_wave(440, 1, sample_rate)
-        await self.output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = self.generate_sine_wave(550, 1, sample_rate)
-        await self.output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = self.generate_sine_wave(660, 1, sample_rate)
-        await self.output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = self.generate_sine_wave(770, 1, sample_rate)
-        await self.output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
-        wave = self.generate_sine_wave(880, 1, sample_rate)
-        await self.output_audio_stream.inject_audio(wave)
-        await asyncio.sleep(1)
+        if result['detected']:
 
-        # And repeating input to output
-        input_wave = np.array(self.input_buffer)
-        input_wave = np.nan_to_num(input_wave, nan=0.0)
-        frame_size = self.output_audio_stream.frame_size
-        padding_needed = (frame_size - (len(input_wave) % frame_size)) % frame_size
-        padded_wave = np.pad(
-            input_wave, (0, padding_needed), mode="constant", constant_values=0
-        )
-        await self.output_audio_stream.inject_audio(padded_wave)
+            # disallow new recordings
+            self.injection_flag = True
 
-    def generate_sine_wave(self, frequency, duration, sample_rate):
-        t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-        wave = np.sin(2 * np.pi * frequency * t).astype(np.float32)
-        return wave
+            segment = result['segment']
+
+            print(f"Detected a speech segment of length {len(segment)}!")
+
+            # wait for one second before playing
+            await asyncio.sleep(1)
+
+            # inject the detected segment into the stream
+            frame_size = self.frame_size
+            padding_needed = (frame_size - (len(segment) % frame_size)) % frame_size
+            padded_segment = np.pad(
+                segment, (0, padding_needed), mode="constant", constant_values=0
+            )
+            await self.output_audio_stream.inject_audio(padded_segment)
+
+            # wait for it playing
+            await asyncio.sleep(len(segment) / self.sample_rate)
+
+            # allow new recordings
+            self.injection_flag = False
