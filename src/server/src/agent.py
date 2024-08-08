@@ -2,6 +2,9 @@ import numpy as np
 import asyncio
 
 from vad import VAD
+from stt import stt
+from llm import llm
+from tts import tts
 
 
 class AudioAgent:
@@ -13,39 +16,46 @@ class AudioAgent:
 
         self.vad = VAD(sample_rate=self.sample_rate)
 
-        self.injection_flag = False
+        self.processing_flag = False
 
     async def update_vad_threshold(self, threshold):
         self.vad.update_threshold(threshold)
 
     async def process_input_audio(self, audio_data):
-        if self.injection_flag:
+        if self.processing_flag:
             return
 
         result = self.vad.detect(audio_data)
 
-        if result['detected']:
+        if result["detected"]:
 
             # disallow new recordings
-            self.injection_flag = True
+            self.processing_flag = True
 
-            segment = result['segment']
+            segment = result["segment"]
 
             print(f"{self.sid}: Detected a speech segment of length {len(segment)}!")
 
-            # wait for one second before playing
-            await asyncio.sleep(1)
+            input_text = await stt(segment, self.sample_rate)
+            print(f"{self.sid}: Input was: {input_text}")
 
-            # inject the detected segment into the stream
+            output_text = await llm(input_text)
+            print(f"{self.sid}: Output was: {output_text}")
+
+            output_audio_data = await tts(output_text, self.sample_rate)
+
             frame_size = self.frame_size
-            padding_needed = (frame_size - (len(segment) % frame_size)) % frame_size
-            padded_segment = np.pad(
-                segment, (0, padding_needed), mode="constant", constant_values=0
+            padding_needed = (
+                frame_size - (len(output_audio_data) % frame_size)
+            ) % frame_size
+            padded_output = np.pad(
+                output_audio_data,
+                (0, padding_needed),
+                mode="constant",
+                constant_values=0,
             )
-            await self.output_audio_stream.inject_audio(padded_segment)
-
-            # wait for it playing
-            await asyncio.sleep(len(segment) / self.sample_rate)
+            await self.output_audio_stream.inject_audio(padded_output)
+            await asyncio.sleep(len(padded_output) / self.sample_rate)
 
             # allow new recordings
-            self.injection_flag = False
+            self.processing_flag = False

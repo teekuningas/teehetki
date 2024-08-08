@@ -8,37 +8,15 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
-    let
-      pkgs = import nixpkgs { inherit system; };
-    in
-    {
-      devShells.default = pkgs.mkShell {
-        buildInputs = [
-          (pkgs.python3.withPackages (ps: [ps.black]))
-          pkgs.stdenv.cc.cc.lib
-        ];
-
-        shellHook = ''
-          echo "Setting up Python virtual environment..."
-          if [ ! -d ".venv" ]; then
-            python -m venv .venv
-          fi
-          source .venv/bin/activate
-          echo "Python virtual environment activated."
-
-          if [ -f "requirements.txt" ]; then
-            echo "Installing Python dependencies..."
-            pip install -r requirements.txt
-          fi
-
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS specific environment setup
-            export DYLD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib/"
-          else
-            # Linux specific environment setup
-            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib/"
-          fi
-        '';
-      };
-    });
+      let
+        pkgs = import nixpkgs { inherit system; };
+      in
+      {
+        formatter = pkgs.nixpkgs-fmt;
+        devShells.default = pkgs.mkShell {
+          buildInputs = [
+            (pkgs.python3.withPackages (ps: [ ps.black ps.aiohttp ps.aiohttp-cors ps.aiofiles ps.numpy ps.scipy ps.python-socketio ps.librosa ]))
+          ];
+        };
+      });
 }

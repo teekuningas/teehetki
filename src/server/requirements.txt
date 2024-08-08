@@ -1,5 +1,0 @@
-aiohttp
-aiohttp-cors
-matplotlib
-numpy
-python-socketio==5.11.3

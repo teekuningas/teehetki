@@ -164,6 +164,9 @@ const AudioStream = () => {
       <div className="title">
         <h1>Teehetki</h1>
       </div>
+      <div className="description">
+        <p>Aloita, ja soketti lentää palvelimelle. Sen jälkeen voit puhua kunhan odotat kärsivällisesti vastausta.</p>
+      </div>
       <div className="start-button">
         <button onClick={startButtonHandler}>
           {isOpen ? 'Stop' : 'Start'}
