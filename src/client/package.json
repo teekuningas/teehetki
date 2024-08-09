@@ -7,7 +7,8 @@
     "react-dom": "*"
   },
   "devDependencies": {
-    "react-scripts": "*"
+    "react-scripts": "*",
+    "prettier": "*"
   },
   "scripts": {
     "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start"

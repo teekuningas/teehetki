@@ -1,10 +1,236 @@
-import React from 'react';
-import AudioStream from './AudioStream';
+import React, { useState, useEffect, useRef } from "react";
+import "./styles.css";
+import io from "socket.io-client";
 
 function App() {
+  // Should be the same as on server
+  const sampleRate = 8000;
+
+  const thresholdMin = 0.0001;
+  const thresholdStep = 0.0001;
+  const thresholdMax = 0.1;
+  const thresholdInitial = 0.001;
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [audioNode, setAudioNode] = useState(null);
+  const [micNode, setMicNode] = useState(null);
+  const [analyserNode, setAnalyserNode] = useState(null);
+  const [threshold, setThreshold] = useState(thresholdInitial);
+
+  const audioContextRef = useRef(null);
+  const socketRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const initAudioContext = async () => {
+      // Initialize Audio API context
+      const audioContext = new AudioContext({ sampleRate: sampleRate });
+      audioContextRef.current = audioContext;
+
+      // Add playback node
+      await audioContext.audioWorklet.addModule("./processor.js");
+      const audioNode = new AudioWorkletNode(audioContext, "audio-processor");
+      audioNode.connect(audioContext.destination);
+      setAudioNode(audioNode);
+
+      // Set up source stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const source = audioContext.createMediaStreamSource(stream);
+
+      // Add mic node for getting socket-friendly output
+      await audioContext.audioWorklet.addModule("./micProcessor.js");
+      const micNode = new AudioWorkletNode(audioContext, "mic-processor");
+      source.connect(micNode);
+      setMicNode(micNode);
+
+      // Add analyser node for trivial visualisations
+      const analyserNode = audioContext.createAnalyser();
+      analyserNode.fftSize = 256;
+      source.connect(analyserNode);
+      setAnalyserNode(analyserNode);
+    };
+
+    if (isOpen) {
+      console.log("Opening audio context.");
+      initAudioContext();
+
+      console.log("Opening socket.");
+      const newSocket = io("ws://localhost:5000");
+      socketRef.current = newSocket;
+
+      // Send initial threshold value to the server
+      newSocket.emit("threshold_update", threshold);
+    } else {
+      // Clean up context, source and nodes when requested
+
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
+        console.log("Closing audio context.");
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+
+      if (socketRef.current && socketRef.current.connected === true) {
+        console.log("Closing socket.");
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+
+      setMicNode(null);
+      setAudioNode(null);
+      setAnalyserNode(null);
+    }
+
+    return () => {
+      // Basic cleanup on unmount
+
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
+        console.log("Closing audio context.");
+        audioContextRef.current.close();
+      }
+      if (socketRef.current && socketRef.current.connected === true) {
+        console.log("Closing socket.");
+        socketRef.current.close();
+      }
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    // Given audio stream from the server socket, send it to playback processor
+
+    if (audioNode && socketRef.current) {
+      const handleAudioData = (data) => {
+        const float32Array = new Float32Array(data);
+        audioNode.port.postMessage({
+          message: "audioData",
+          audioData: float32Array,
+        });
+      };
+
+      socketRef.current.on("audio", handleAudioData);
+
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.off("audio");
+        }
+      };
+    }
+  }, [audioNode]);
+
+  useEffect(() => {
+    // Given audio stream from the mic processor,
+    // send it to the server socket
+
+    if (micNode && socketRef.current) {
+      micNode.port.onmessage = (event) => {
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit("audio_input", event.data.audioData);
+        }
+      };
+    }
+  }, [micNode]);
+
+  useEffect(() => {
+    // Show a simple activity widget for mic audio source
+
+    if (analyserNode) {
+      const canvas = canvasRef.current;
+      const canvasContext = canvas.getContext("2d");
+
+      const renderFrame = () => {
+        requestAnimationFrame(renderFrame);
+
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserNode.getByteTimeDomainData(dataArray);
+
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+
+        let sumOfSquares = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const value = dataArray[i] - 128;
+          sumOfSquares += value * value;
+        }
+        const rms = Math.sqrt(sumOfSquares / bufferLength);
+
+        canvasContext.fillStyle = "rgb(200, 200, 200)";
+        canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+
+        const barWidth = (rms / 128) * canvas.width;
+
+        canvasContext.fillStyle = "rgb(0, 0, 0)";
+        canvasContext.fillRect(0, 0, barWidth, canvas.height);
+      };
+
+      renderFrame();
+    }
+  }, [analyserNode]);
+
+  const startButtonHandler = () => {
+    // Handle switch from open to not open and vv.
+    setIsOpen((prevState) => !prevState);
+  };
+
+  const thresholdHandler = () => {
+    // Send updates to threshold to server
+    if (socketRef.current) {
+      socketRef.current.emit("threshold_update", threshold);
+    }
+  };
+
+  const handleThresholdChange = (event) => {
+    // Simple setter for the slider
+    setThreshold(parseFloat(event.target.value));
+  };
+
   return (
     <div className="App">
-      <AudioStream />
+      <div className="container">
+        <div className="title">
+          <h1>Teehetki</h1>
+        </div>
+        <div className="description">
+          <p>
+            Aloita, ja soketti lentää palvelimelle. Sen jälkeen voit puhua
+            kunhan odotat kärsivällisesti vastausta.
+          </p>
+        </div>
+        <div className="start-button">
+          <button onClick={startButtonHandler}>
+            {isOpen ? "Stop" : "Start"}
+          </button>
+        </div>
+        <div className="threshold-slider">
+          <label>VAD threshold:</label>
+          <input
+            type="range"
+            min={thresholdMin}
+            max={thresholdMax}
+            step={thresholdStep}
+            value={threshold}
+            onChange={handleThresholdChange}
+          />
+          <label>Value: {threshold}</label>
+          <button onClick={thresholdHandler} disabled={!isOpen}>
+            Set threshold
+          </button>
+        </div>
+        <div className="canvas">
+          <canvas ref={canvasRef}></canvas>
+        </div>
+      </div>
     </div>
   );
 }
