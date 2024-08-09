@@ -19,8 +19,13 @@ class AudioAgent:
         self.vad = VAD(sample_rate=self.sample_rate)
         self.is_processing = False
 
+        self.chat_history = []
+
     async def get_status(self):
-        return {"is_processing": self.is_processing}
+        return {
+            "is_processing": self.is_processing,
+            "chat_history": self.chat_history,
+        }
 
     async def update_vad_threshold(self, threshold):
         self.vad.update_threshold(threshold)
@@ -44,9 +49,13 @@ class AudioAgent:
             input_text = await stt(segment, self.sample_rate)
             print(f"{self.sid}: Input was: {input_text}")
 
+            self.chat_history.append({"role": "user", "content": input_text})
+
             # Use llm to get a chat-like response to the textual input
-            output_text = await llm(input_text)
+            output_text = await llm(self.chat_history)
             print(f"{self.sid}: Output was: {output_text}")
+
+            self.chat_history.append({"role": "assistant", "content": output_text})
 
             # Use text-to-speech to get audio output from the chat response
             output_audio_data = await tts(output_text, self.sample_rate)

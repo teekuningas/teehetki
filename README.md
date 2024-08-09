@@ -1,19 +1,27 @@
-Käyntiin esimerkiksi näin. Ensin yhdessä terminaalissa (leikki)api:
-
-```
-make run_api
-```
-
-Sitten toisessa palvelin:
+Käyntiin esimerkiksi näin. Yhteen terminaaliin palvelin:
 
 ```
 make run_server
 ```
 
-Sitten vielä selainasiakas:
+Toiseen asiakas:
 
 ```
 make run_client
 ```
 
-Ja selaimella osoitteeseen http://localhost:3000
+Ja sitten vielä tts-, stt- ja llm-apit. Näin voi pyörittää localai-konttia:
+
+```
+make run_api
+```
+
+Vaihtoehtoisesti palvelimelle voi asettaa ympäristömuuttujat, esimerkiksi:
+```
+API_ADDRESS=https://api.openai.com
+OPENAI_API_KEY=sk-<xx>
+OPENAI_ORGANIZATION=org-<yy>
+```
+
+Ja sitten selaimella osoitteeseen http://localhost:3000.
+

@@ -50,3 +50,26 @@ canvas {
   margin-top: 20px;
   border: 1px solid #000;
 }
+
+.chat-history {
+  margin-top: 20px;
+}
+
+.chat-history ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.chat-history li {
+  margin-bottom: 10px;
+  padding: 5px;
+  border-radius: 5px;
+}
+
+.chat-history .user {
+  background-color: #e0f7fa;
+}
+
+.chat-history .assistant {
+  background-color: #ffe0b2;
+}

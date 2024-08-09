@@ -17,6 +17,7 @@ function App() {
   const [analyserNode, setAnalyserNode] = useState(null);
   const [threshold, setThreshold] = useState(thresholdInitial);
   const [agentProcessing, setAgentProcessing] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
 
   const audioContextRef = useRef(null);
   const socketRef = useRef(null);
@@ -67,6 +68,7 @@ function App() {
       // Listen for agent status
       newSocket.on("agent_status", (data) => {
         setAgentProcessing(data.is_processing);
+        setChatHistory(data.chat_history);
       });
     } else {
       // Clean up context, source and nodes when requested
@@ -242,6 +244,20 @@ function App() {
         </div>
         <div className="canvas">
           <canvas ref={canvasRef}></canvas>
+        </div>
+        <div className="chat-history">
+          <h2>Chat History</h2>
+          {chatHistory.length > 0 ? (
+            <ul>
+              {chatHistory.map((entry, index) => (
+                <li key={index} className={entry.role}>
+                  <strong>{entry.role}:</strong> {entry.content}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No chat history yet available.</p>
+          )}
         </div>
       </div>
     </div>

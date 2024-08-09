@@ -3,7 +3,7 @@ import asyncio
 import os
 
 
-async def llm(text):
+async def llm(chat_history):
     """A simple function that calls llm api to get a chat-like response given the input text."""
     base_url = os.getenv("API_ADDRESS", "http://localhost:8080")
     url = f"{base_url}/v1/chat/completions"
@@ -17,15 +17,18 @@ async def llm(text):
     if openai_org_id:
         headers["OpenAI-Organization"] = openai_org_id
 
+    messages = [
+        {
+            "role": "system",
+            "content": "Vastaa käyttäjälle aina hyvin lyhyesti, korkeintaan kymmenellä sanalla.",
+        },
+    ]
+
+    messages.extend(chat_history)
+
     payload = {
         "model": "gpt-4",
-        "messages": [
-            {
-                "role": "system",
-                "content": "Vastaa käyttäjälle hyvin lyhyesti, korkeintaan kymmenellä sanalla.",
-            },
-            {"role": "user", "content": text},
-        ],
+        "messages": messages,
         "max_tokens": 70,
         "temperature": 0.7,
     }
