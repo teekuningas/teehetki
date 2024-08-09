@@ -38,10 +38,12 @@
               ];
             };
             copyToRoot = with pkgs; [
-              (pkgs.python3.withPackages (ps: [ ps.pydub ps.aiohttp ps.aiohttp-cors ps.numpy ps.scipy ps.python-socketio ps.librosa ]))
+              (python3.withPackages (ps: [ ps.pydub ps.aiohttp ps.aiohttp-cors ps.numpy ps.scipy ps.python-socketio ps.librosa ]))
               ffmpeg
               bashInteractive
               coreutils
+              fakeNss
+              pkgs.dockerTools.caCertificates
             ];
           };
         };

@@ -1,5 +1,6 @@
 import aiohttp
 import asyncio
+import traceback
 
 from vad import VAD
 from stt import stt
@@ -69,6 +70,7 @@ class AudioAgent:
                 # allowing new recordings
                 await asyncio.sleep((len(output_audio_data) / self.sample_rate) + 1)
             except aiohttp.client_exceptions.ClientOSError:
+                traceback.print_exc()
                 print("Cannot connect to the api server.")
 
             # Allow new recordings
