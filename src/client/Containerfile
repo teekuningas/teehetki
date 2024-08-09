@@ -20,8 +20,15 @@ RUN npm run build
 # Install serve globally
 RUN npm install -g serve
 
+# Copy the entry point script
+COPY entrypoint.sh /app/entrypoint.sh
+
+# Make the entry point script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Expose port 3000
 EXPOSE 3000
 
-# Start the app using serve
+# Use the entry point script and start the app using serve
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["serve", "-s", "build", "-l", "3000"]

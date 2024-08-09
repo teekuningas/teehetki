@@ -24,6 +24,13 @@ function App() {
   const mediaStreamRef = useRef(null);
   const canvasRef = useRef(null);
 
+  // Allow injecting api address at runtime
+  // but default to localhost:5000
+  const runtimeApiAddress = "%%RUNTIME_API_ADDRESS%%";
+  const apiAddress = runtimeApiAddress.includes("RUNTIME_API_ADDRESS")
+    ? "ws://localhost:5000"
+    : runtimeApiAddress;
+
   useEffect(() => {
     const initAudioContext = async () => {
       // Initialize Audio API context
@@ -59,7 +66,7 @@ function App() {
       initAudioContext();
 
       console.log("Opening socket.");
-      const newSocket = io("ws://localhost:5000");
+      const newSocket = io(apiAddress);
       socketRef.current = newSocket;
 
       // Send initial threshold value to the server
