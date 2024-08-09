@@ -1,4 +1,5 @@
 .venv
+.env
 node_modules
 models
 __pycache__

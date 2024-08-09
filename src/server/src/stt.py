@@ -1,10 +1,10 @@
 import numpy as np
 import aiohttp
-import aiofiles
 import io
 from scipy.io.wavfile import write
 import librosa
 import asyncio
+import os
 
 dest_sample_rate = 16000
 
@@ -20,6 +20,18 @@ async def stt(audio_data, sample_rate, language="fi"):
         write(wav_buffer, dest_sample_rate, audio_data)
         wav_buffer.seek(0)
 
+        base_url = os.getenv("API_ADDRESS", "http://localhost:8080")
+        url = f"{base_url}/v1/audio/transcriptions"
+        headers = {}
+
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        openai_org_id = os.getenv("OPENAI_ORGANIZATION")
+
+        if openai_api_key:
+            headers["Authorization"] = f"Bearer {openai_api_key}"
+        if openai_org_id:
+            headers["OpenAI-Organization"] = openai_org_id
+
         async with aiohttp.ClientSession() as session:
             form_data = aiohttp.FormData()
             form_data.add_field(
@@ -28,8 +40,6 @@ async def stt(audio_data, sample_rate, language="fi"):
             form_data.add_field("model", "whisper-1")
             form_data.add_field("language", language)
 
-            async with session.post(
-                "http://localhost:8080/v1/audio/transcriptions", data=form_data
-            ) as response:
+            async with session.post(url, headers=headers, data=form_data) as response:
                 response_json = await response.json()
                 return response_json["text"]

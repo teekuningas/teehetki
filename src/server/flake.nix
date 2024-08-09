@@ -15,7 +15,7 @@
         formatter = pkgs.nixpkgs-fmt;
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            (pkgs.python3.withPackages (ps: [ ps.black ps.aiohttp ps.aiohttp-cors ps.aiofiles ps.numpy ps.scipy ps.python-socketio ps.librosa ]))
+            (pkgs.python3.withPackages (ps: [ ps.pydub ps.black ps.aiohttp ps.aiohttp-cors ps.numpy ps.scipy ps.python-socketio ps.librosa ]))
           ];
         };
       });

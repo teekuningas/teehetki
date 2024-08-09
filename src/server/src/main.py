@@ -26,28 +26,23 @@ class OutputAudioStream:
         self.sample_rate = 8000
         self.frame_duration = 0.1
         self.frame_size = int(self.sample_rate * self.frame_duration)
-        self.injected_audio = None
-        self.current_frame_index = 0
+        self.injected_audio = np.array([], dtype=np.float32)
 
     async def get_audio_frame(self):
         async with self.lock:
-            if self.injected_audio is None:
+            if len(self.injected_audio) < self.frame_size:
                 return None
 
-            start = self.current_frame_index * self.frame_size
-            end = start + self.frame_size
+            # Extract the next frame
+            frame = self.injected_audio[: self.frame_size]
 
-            if start < len(self.injected_audio):
-                frame = self.injected_audio[start:end]
-                self.current_frame_index += 1
-                return frame
+            # Remove the extracted frame from the injected_audio
+            self.injected_audio = self.injected_audio[self.frame_size :]
 
-            self.injected_audio = None
-            return None
+            return frame
 
     async def inject_audio(self, audio_data):
         async with self.lock:
-
             frame_size = self.frame_size
             padding_needed = (frame_size - len(audio_data) % frame_size) % frame_size
             padded_output = np.pad(
@@ -56,8 +51,9 @@ class OutputAudioStream:
                 mode="constant",
                 constant_values=0,
             )
-            self.injected_audio = padded_output
-            self.current_frame_index = 0
+
+            # Append the new padded audio to the existing injected_audio
+            self.injected_audio = np.concatenate((self.injected_audio, padded_output))
 
 
 @sio.event
