@@ -65,7 +65,7 @@ function App() {
       console.log("Opening audio context.");
       initAudioContext();
 
-      console.log("Opening socket.");
+      console.log(`Opening socket to ${apiAddress}`);
       const newSocket = io(apiAddress);
       socketRef.current = newSocket;
 
