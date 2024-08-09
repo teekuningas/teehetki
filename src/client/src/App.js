@@ -249,7 +249,7 @@ function App() {
           <h2>Chat History</h2>
           {chatHistory.length > 0 ? (
             <ul>
-              {chatHistory.map((entry, index) => (
+              {chatHistory.slice().reverse().map((entry, index) => (
                 <li key={index} className={entry.role}>
                   <strong>{entry.role}:</strong> {entry.content}
                 </li>
