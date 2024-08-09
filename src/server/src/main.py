@@ -6,7 +6,7 @@ import socketio
 from agent import AudioAgent
 
 sio = socketio.AsyncServer(
-    async_mode="aiohttp", cors_allowed_origins=["http://localhost:3000"]
+    async_mode="aiohttp", cors_allowed_origins="*"
 )
 app = web.Application()
 sio.attach(app)
