@@ -1,4 +1,4 @@
-import numpy as np
+import aiohttp
 import asyncio
 
 from vad import VAD
@@ -45,27 +45,30 @@ class AudioAgent:
             segment = result["segment"]
             print(f"{self.sid}: Detected a speech segment of length {len(segment)}!")
 
-            # Use speech-to-text to get a textual representation
-            input_text = await stt(segment, self.sample_rate)
-            print(f"{self.sid}: Input was: {input_text}")
+            try:
+                # Use speech-to-text to get a textual representation
+                input_text = await stt(segment, self.sample_rate)
+                print(f"{self.sid}: Input was: {input_text}")
 
-            self.chat_history.append({"role": "user", "content": input_text})
+                self.chat_history.append({"role": "user", "content": input_text})
 
-            # Use llm to get a chat-like response to the textual input
-            output_text = await llm(self.chat_history)
-            print(f"{self.sid}: Output was: {output_text}")
+                # Use llm to get a chat-like response to the textual input
+                output_text = await llm(self.chat_history)
+                print(f"{self.sid}: Output was: {output_text}")
 
-            self.chat_history.append({"role": "assistant", "content": output_text})
+                self.chat_history.append({"role": "assistant", "content": output_text})
 
-            # Use text-to-speech to get audio output from the chat response
-            output_audio_data = await tts(output_text, self.sample_rate)
+                # Use text-to-speech to get audio output from the chat response
+                output_audio_data = await tts(output_text, self.sample_rate)
 
-            # Inject it into the output stream
-            await self.output_audio_stream.inject_audio(output_audio_data)
+                # Inject it into the output stream
+                await self.output_audio_stream.inject_audio(output_audio_data)
 
-            # Wait approximately as long as the audio would play before
-            # allowing new recordings
-            await asyncio.sleep((len(output_audio_data) / self.sample_rate) + 1)
+                # Wait approximately as long as the audio would play before
+                # allowing new recordings
+                await asyncio.sleep((len(output_audio_data) / self.sample_rate) + 1)
+            except aiohttp.client_exceptions.ClientOSError:
+                print("Cannot connect to the api server.")
 
             # Allow new recordings
             self.is_processing = False
