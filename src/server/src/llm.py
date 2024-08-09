@@ -3,6 +3,7 @@ import asyncio
 
 
 async def llm(text):
+    """A simple function that calls llm api to get a chat-like response given the input text."""
     url = "http://localhost:8080/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
     payload = {

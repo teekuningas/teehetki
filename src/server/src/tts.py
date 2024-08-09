@@ -7,6 +7,7 @@ import librosa
 
 
 async def tts(text, sample_rate):
+    """A simple function that uses api to generate speech from text."""
     url = "http://localhost:8080/tts"
     headers = {"Content-Type": "application/json"}
     payload = {"input": text, "model": "tts-1"}

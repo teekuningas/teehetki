@@ -10,6 +10,7 @@ dest_sample_rate = 16000
 
 
 async def stt(audio_data, sample_rate, language="fi"):
+    """A simple function that uses api to get textual representation from speech."""
     if sample_rate != dest_sample_rate:
         audio_data = librosa.resample(
             audio_data, orig_sr=sample_rate, target_sr=dest_sample_rate

@@ -1,4 +1,5 @@
 """Köyhän miehen VAD."""
+
 import numpy as np
 
 
