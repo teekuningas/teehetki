@@ -16,6 +16,7 @@ function App() {
   const [micNode, setMicNode] = useState(null);
   const [analyserNode, setAnalyserNode] = useState(null);
   const [threshold, setThreshold] = useState(thresholdInitial);
+  const [agentProcessing, setAgentProcessing] = useState(false);
 
   const audioContextRef = useRef(null);
   const socketRef = useRef(null);
@@ -62,6 +63,11 @@ function App() {
 
       // Send initial threshold value to the server
       newSocket.emit("threshold_update", threshold);
+
+      // Listen for agent status
+      newSocket.on("agent_status", (data) => {
+        setAgentProcessing(data.is_processing);
+      });
     } else {
       // Clean up context, source and nodes when requested
 
@@ -211,6 +217,13 @@ function App() {
           <button onClick={startButtonHandler}>
             {isOpen ? "Stop" : "Start"}
           </button>
+        </div>
+        <div
+          className={`agent-status ${agentProcessing ? "processing" : "idle"}`}
+        >
+          <p>
+            Status: <span>{agentProcessing ? "Processing" : "Idle"}</span>
+          </p>
         </div>
         <div className="threshold-slider">
           <label>VAD threshold:</label>

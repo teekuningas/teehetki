@@ -19,7 +19,7 @@ class AudioAgent:
         self.vad = VAD(sample_rate=self.sample_rate)
         self.is_processing = False
 
-    async def get_status():
+    async def get_status(self):
         return {"is_processing": self.is_processing}
 
     async def update_vad_threshold(self, threshold):

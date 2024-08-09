@@ -1,13 +1,19 @@
-Ensin yhdessä terminaalissa openai-tyyppinen api pyörimään:
+Käyntiin esimerkiksi näin. Ensin yhdessä terminaalissa (leikki)api:
+
 ```
 make run_api
 ```
-Sitten toisessa python-palvelin:
+
+Sitten toisessa palvelin:
+
 ```
 make run_server
 ```
-Sitten vielä clientti:
+
+Sitten vielä selainasiakas:
+
 ```
 make run_client
 ```
-Sitten selaimella http://localhost:3000
+
+Ja selaimella osoitteeseen http://localhost:3000

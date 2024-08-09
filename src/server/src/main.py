@@ -75,6 +75,9 @@ async def connect(sid, environ):
     # Start a task that will send available data to client.
     sio.start_background_task(send_audio_to_client, sid)
 
+    # Start background task that send agent status to client.
+    sio.start_background_task(send_agent_status_to_client, sid)
+
 
 @sio.event
 async def disconnect(sid):
@@ -108,6 +111,17 @@ async def send_audio_to_client(sid):
                 await sio.emit("audio", audio_frame.tolist(), room=sid)
             else:
                 await asyncio.sleep(0.01)
+        except KeyError:
+            pass
+
+
+async def send_agent_status_to_client(sid):
+    """Poll status from agent and sent it to the socket."""
+    while sid in audio_agents:
+        try:
+            status = await audio_agents[sid].get_status()
+            await sio.emit("agent_status", status, room=sid)
+            await asyncio.sleep(0.5)
         except KeyError:
             pass
 
