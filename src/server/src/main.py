@@ -90,12 +90,11 @@ async def audio_input(sid, data):
 
 
 @sio.event
-async def threshold_update(sid, data):
-    """Threshold setting comes in from the socket."""
-    print(f"{sid}: Updated threshold to {data}")
-    threshold = float(data)
+async def settings_update(sid, settings):
+    """Adjustable settings comes in from the socket."""
+    print(f"{sid}: Updated settings to {settings}")
     if sid in audio_agents:
-        await audio_agents[sid].update_vad_threshold(threshold)
+        await audio_agents[sid].update_settings(settings)
 
 
 async def send_audio_to_client(sid):

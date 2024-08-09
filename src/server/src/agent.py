@@ -27,7 +27,8 @@ class AudioAgent:
             "chat_history": self.chat_history,
         }
 
-    async def update_vad_threshold(self, threshold):
+    async def update_settings(self, settings):
+        threshold = settings["threshold"]
         self.vad.update_threshold(threshold)
 
     async def process_input_audio(self, audio_data):

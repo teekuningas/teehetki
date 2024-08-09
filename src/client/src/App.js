@@ -191,10 +191,13 @@ function App() {
     setIsOpen((prevState) => !prevState);
   };
 
-  const thresholdHandler = () => {
+  const settingsHandler = () => {
     // Send updates to threshold to server
     if (socketRef.current) {
-      socketRef.current.emit("threshold_update", threshold);
+      const settings = {
+        threshold: threshold,
+      };
+      socketRef.current.emit("settings_update", settings);
     }
   };
 
@@ -238,8 +241,8 @@ function App() {
             onChange={handleThresholdChange}
           />
           <label>Value: {threshold}</label>
-          <button onClick={thresholdHandler} disabled={!isOpen}>
-            Set threshold
+          <button onClick={settingsHandler} disabled={!isOpen}>
+            Update settings
           </button>
         </div>
         <div className="canvas">
@@ -249,11 +252,14 @@ function App() {
           <h2>Chat History</h2>
           {chatHistory.length > 0 ? (
             <ul>
-              {chatHistory.slice().reverse().map((entry, index) => (
-                <li key={index} className={entry.role}>
-                  <strong>{entry.role}:</strong> {entry.content}
-                </li>
-              ))}
+              {chatHistory
+                .slice()
+                .reverse()
+                .map((entry, index) => (
+                  <li key={index} className={entry.role}>
+                    <strong>{entry.role}:</strong> {entry.content}
+                  </li>
+                ))}
             </ul>
           ) : (
             <p>No chat history yet available.</p>
