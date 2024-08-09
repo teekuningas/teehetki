@@ -8,21 +8,22 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
-    let
-      pkgs = import nixpkgs { inherit system; };
-    in
-    {
-      devShells.default = pkgs.mkShell {
-        buildInputs = [
-          pkgs.nodejs
-        ];
+      let
+        pkgs = import nixpkgs { inherit system; };
+      in
+      {
+        formatter = pkgs.nixpkgs-fmt;
+        devShells.default = pkgs.mkShell {
+          buildInputs = [
+            pkgs.nodejs
+          ];
 
-        shellHook = ''
-          if [ -f "package.json" ]; then
-            echo "Installing npm dependencies..."
-            npm install
-          fi
-        '';
-      };
-    });
+          shellHook = ''
+            if [ -f "package.json" ]; then
+              echo "Installing npm dependencies..."
+              npm install
+            fi
+          '';
+        };
+      });
 }
