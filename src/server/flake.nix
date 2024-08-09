@@ -16,7 +16,34 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [
             (pkgs.python3.withPackages (ps: [ ps.pydub ps.black ps.aiohttp ps.aiohttp-cors ps.numpy ps.scipy ps.python-socketio ps.librosa ]))
+            pkgs.ffmpeg
           ];
+        };
+
+        packages = {
+          dockerImage = pkgs.dockerTools.buildImage {
+            name = "teehetki-server";
+            tag = "latest";
+            runAsRoot = ''
+              mkdir -p app
+              cp -r ${./src} /app/src
+              chmod -R +w /app
+            '';
+            config = {
+              Cmd = [ "python" "src/main.py" ];
+              WorkingDir = "/app";
+              Expose = [ "5000" ]; # Expose the port your app is running on
+              Env = [
+                "PYTHONUNBUFFERED=1"
+              ];
+            };
+            copyToRoot = with pkgs; [
+              (pkgs.python3.withPackages (ps: [ ps.pydub ps.aiohttp ps.aiohttp-cors ps.numpy ps.scipy ps.python-socketio ps.librosa ]))
+              ffmpeg
+              bashInteractive
+              coreutils
+            ];
+          };
         };
       });
 }
