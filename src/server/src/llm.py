@@ -9,13 +9,24 @@ async def llm(chat_history):
     url = f"{base_url}/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
 
+    # Get API key from env variable
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if openai_api_key:
         headers["Authorization"] = f"Bearer {openai_api_key}"
 
+    # Get organization from env variable
     openai_org_id = os.getenv("OPENAI_ORGANIZATION")
     if openai_org_id:
         headers["OpenAI-Organization"] = openai_org_id
+
+    # Get LLM model from env variable
+    model = os.getenv("LLM_MODEL", "gpt-4")
+
+    # Get temperature from env variable
+    try:
+        temperature = float(os.getenv("LLM_TEMPERATURE", 0.7))
+    except ValueError:
+        temperature = 0.7
 
     messages = [
         {
@@ -27,10 +38,10 @@ async def llm(chat_history):
     messages.extend(chat_history)
 
     payload = {
-        "model": "gpt-4",
+        "model": model,
         "messages": messages,
         "max_tokens": 70,
-        "temperature": 0.7,
+        "temperature": temperature,
     }
 
     async with aiohttp.ClientSession() as session:
