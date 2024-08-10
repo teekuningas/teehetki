@@ -9,7 +9,7 @@ class VAD:
         sample_rate,
         threshold=0.001,
         energy_window_size=2.0,
-        min_speech_length=2.0,
+        min_speech_length=1.0,
         max_buffer_length=120.0,
     ):
         self.sample_rate = sample_rate

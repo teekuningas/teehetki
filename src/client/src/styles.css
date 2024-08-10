@@ -22,6 +22,17 @@
   width: 100%;
 }
 
+.container .description p,
+.container .start-button button,
+.container .threshold-slider label,
+.container .threshold-slider input,
+.container .threshold-slider button,
+.container .agent-status,
+.container .chat-history li,
+.container .canvas {
+  font-size: 1.2em;
+}
+
 .container .threshold-slider {
   display: flex;
   flex-direction: column;

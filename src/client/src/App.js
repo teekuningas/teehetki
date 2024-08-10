@@ -8,7 +8,7 @@ function App() {
 
   const thresholdMin = 0.0001;
   const thresholdStep = 0.0001;
-  const thresholdMax = 0.1;
+  const thresholdMax = 0.01;
   const thresholdInitial = 0.001;
 
   const [isOpen, setIsOpen] = useState(false);
