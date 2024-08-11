@@ -10,14 +10,20 @@ function App() {
   const thresholdStep = 0.0001;
   const thresholdMax = 0.01;
   const thresholdInitial = 0.001;
+  const systemPromptInitial =
+    "Vastaa käyttjälle lyhyesti kuin olisit puhelimessa.";
 
   const [isOpen, setIsOpen] = useState(false);
   const [audioNode, setAudioNode] = useState(null);
   const [micNode, setMicNode] = useState(null);
   const [analyserNode, setAnalyserNode] = useState(null);
-  const [threshold, setThreshold] = useState(thresholdInitial);
   const [agentProcessing, setAgentProcessing] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
+
+  const [settings, setSettings] = useState({
+    threshold: thresholdInitial,
+    system_prompt: systemPromptInitial,
+  });
 
   const audioContextRef = useRef(null);
   const socketRef = useRef(null);
@@ -69,8 +75,8 @@ function App() {
       const newSocket = io(apiAddress);
       socketRef.current = newSocket;
 
-      // Send initial threshold value to the server
-      newSocket.emit("threshold_update", threshold);
+      // Send initial setting values to the server
+      newSocket.emit("settings_update", settings);
 
       // Listen for agent status
       newSocket.on("agent_status", (data) => {
@@ -199,18 +205,24 @@ function App() {
   };
 
   const settingsHandler = () => {
-    // Send updates to threshold to server
     if (socketRef.current) {
-      const settings = {
-        threshold: threshold,
-      };
       socketRef.current.emit("settings_update", settings);
     }
   };
 
   const handleThresholdChange = (event) => {
     // Simple setter for the slider
-    setThreshold(parseFloat(event.target.value));
+    setSettings({
+      ...settings,
+      threshold: parseFloat(event.target.value),
+    });
+  };
+
+  const handleSystemPromptChange = (event) => {
+    setSettings({
+      ...settings,
+      system_prompt: event.target.value,
+    });
   };
 
   return (
@@ -237,17 +249,26 @@ function App() {
             Status: <span>{agentProcessing ? "Processing" : "Idle"}</span>
           </p>
         </div>
-        <div className="threshold-slider">
-          <label>VAD threshold:</label>
-          <input
-            type="range"
-            min={thresholdMin}
-            max={thresholdMax}
-            step={thresholdStep}
-            value={threshold}
-            onChange={handleThresholdChange}
-          />
-          <label>Value: {threshold}</label>
+        <div className="settings-section">
+          <div className="threshold-slider">
+            <label>VAD threshold:</label>
+            <input
+              type="range"
+              min={thresholdMin}
+              max={thresholdMax}
+              step={thresholdStep}
+              value={settings.threshold}
+              onChange={handleThresholdChange}
+            />
+            <label>Value: {settings.threshold}</label>
+          </div>
+          <div className="system-prompt">
+            <label>System Prompt:</label>
+            <textarea
+              value={settings.system_prompt}
+              onChange={handleSystemPromptChange}
+            />
+          </div>
           <button onClick={settingsHandler} disabled={!isOpen}>
             Update settings
           </button>

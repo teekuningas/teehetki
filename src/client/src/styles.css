@@ -16,7 +16,9 @@
 .container .start-button button,
 .container .threshold-slider label,
 .container .threshold-slider input,
-.container .threshold-slider button,
+.container .system-prompt label,
+.container .system-prompt textarea,
+.container .settings-section button,
 .container .canvas {
   display: block;
   width: 100%;
@@ -26,7 +28,9 @@
 .container .start-button button,
 .container .threshold-slider label,
 .container .threshold-slider input,
-.container .threshold-slider button,
+.container .system-prompt label,
+.container .system-prompt textarea,
+.container .settings-section button,
 .container .agent-status,
 .container .chat-history li,
 .container .canvas {
@@ -34,13 +38,23 @@
 }
 
 .container .threshold-slider {
+  margin-bottom: 0.5em;
+}
+
+.container .threshold-slider,
+.container .system-prompt {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.container .threshold-slider input {
+.container .threshold-slider input,
+.container .system-prompt textarea {
   width: 100%;
+}
+
+.container .system-prompt label {
+  margin-bottom: 0.2em;
 }
 
 .agent-status.processing span {
@@ -83,4 +97,13 @@ canvas {
 
 .chat-history .assistant {
   background-color: #ffe0b2;
+}
+
+.system-prompt textarea {
+  height: 100px;
+  resize: vertical;
+}
+
+.settings-section button {
+  margin-top: 10px;
 }

@@ -3,8 +3,8 @@ import asyncio
 import traceback
 
 from vad import VAD
+from llm import LLM
 from stt import stt
-from llm import llm
 from tts import tts
 
 
@@ -18,6 +18,8 @@ class AudioAgent:
         self.frame_size = output_audio_stream.frame_size
 
         self.vad = VAD(sample_rate=self.sample_rate)
+        self.llm = LLM()
+
         self.is_processing = False
 
         self.chat_history = []
@@ -31,6 +33,9 @@ class AudioAgent:
     async def update_settings(self, settings):
         threshold = settings["threshold"]
         self.vad.update_threshold(threshold)
+
+        system_prompt = settings["system_prompt"]
+        self.llm.update_system_prompt(system_prompt)
 
     async def process_input_audio(self, audio_data):
         if self.is_processing:
@@ -55,7 +60,7 @@ class AudioAgent:
                 self.chat_history.append({"role": "user", "content": input_text})
 
                 # Use llm to get a chat-like response to the textual input
-                output_text = await llm(self.chat_history)
+                output_text = await self.llm.generate(self.chat_history)
                 print(f"{self.sid}: Output was: {output_text}")
 
                 self.chat_history.append({"role": "assistant", "content": output_text})
