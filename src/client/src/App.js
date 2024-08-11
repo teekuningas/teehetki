@@ -11,7 +11,7 @@ function App() {
   const thresholdMax = 0.01;
   const thresholdInitial = 0.001;
   const systemPromptInitial =
-    "Vastaa käyttjälle lyhyesti kuin olisit puhelimessa.";
+    "Vastaa käyttäjälle lyhyesti kuin olisit puhelimessa.";
 
   const [isOpen, setIsOpen] = useState(false);
   const [audioNode, setAudioNode] = useState(null);
