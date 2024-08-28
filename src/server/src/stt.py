@@ -20,7 +20,7 @@ async def stt(audio_data, sample_rate, language="fi"):
         write(wav_buffer, dest_sample_rate, audio_data)
         wav_buffer.seek(0)
 
-        base_url = os.getenv("API_ADDRESS", "http://localhost:8080")
+        base_url = os.getenv("STT_API_ADDRESS") or os.getenv("API_ADDRESS") or "http://localhost:8080"
         url = f"{base_url}/v1/audio/transcriptions"
         headers = {}
 

@@ -13,7 +13,7 @@ class LLM:
 
     async def generate(self, chat_history):
         """A simple method that calls llm api to get a chat-like response given the input text."""
-        base_url = os.getenv("API_ADDRESS", "http://localhost:8080")
+        base_url = os.getenv("LLM_API_ADDRESS") or os.getenv("API_ADDRESS") or "http://localhost:8080"
         url = f"{base_url}/v1/chat/completions"
         headers = {"Content-Type": "application/json"}
 
@@ -51,7 +51,7 @@ class LLM:
         payload = {
             "model": model,
             "messages": messages,
-            "max_tokens": 70,
+            "max_tokens": 100,
             "temperature": temperature,
         }
 

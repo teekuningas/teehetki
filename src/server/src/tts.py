@@ -9,7 +9,7 @@ import os
 
 async def tts(text, sample_rate):
     """A simple function that uses api to generate speech from text."""
-    base_url = os.getenv("API_ADDRESS", "http://localhost:8080")
+    base_url = os.getenv("TTS_API_ADDRESS") or os.getenv("API_ADDRESS") or "http://localhost:8080"
     url = f"{base_url}/v1/audio/speech"
     headers = {"Content-Type": "application/json"}
 
