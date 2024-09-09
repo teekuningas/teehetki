@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package.json package-lock.json ./
 
+# Make homepage configurable at runtime
+RUN sed -i 's|"homepage": "",|"homepage": "%%RUNTIME_PREFIX_PATH%%",|' package.json
+
 # Install dependencies
 RUN npm install
 
@@ -31,4 +34,4 @@ EXPOSE 3000
 
 # Use the entry point script and start the app using serve
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["serve", "-s", "build", "-l", "3000"]
+CMD ["serve", "build", "--listen", "tcp://0.0.0.0:3000"]

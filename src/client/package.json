@@ -1,10 +1,12 @@
 {
   "name": "teehetki",
   "version": "1.0.0",
+  "homepage": "",
   "main": "index.js",
   "dependencies": {
     "socket.io-client": "4.7.5",
-    "react-dom": "*"
+    "react-dom": "*",
+    "react-router-dom": "*"
   },
   "devDependencies": {
     "react-scripts": "*",

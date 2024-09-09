@@ -37,14 +37,20 @@ function App() {
     ? "ws://localhost:5000"
     : runtimeApiAddress;
 
+  // Allow injecting prefix path at runtime
+  // but default to empty prefix
+  const runtimePrefixPath = "%%RUNTIME_PREFIX_PATH%%";
+  const prefixPath = runtimePrefixPath.includes("RUNTIME_PREFIX_PATH") ? "" : runtimePrefixPath;
+
   useEffect(() => {
     const initAudioContext = async () => {
       // Initialize Audio API context
+
       const audioContext = new AudioContext({ sampleRate: sampleRate });
       audioContextRef.current = audioContext;
 
       // Add playback node
-      await audioContext.audioWorklet.addModule("./processor.js");
+      await audioContext.audioWorklet.addModule(`.${prefixPath}/processor.js`);
       const audioNode = new AudioWorkletNode(audioContext, "audio-processor");
       audioNode.connect(audioContext.destination);
       setAudioNode(audioNode);
@@ -55,7 +61,7 @@ function App() {
       const source = audioContext.createMediaStreamSource(stream);
 
       // Add mic node for getting socket-friendly output
-      await audioContext.audioWorklet.addModule("./micProcessor.js");
+      await audioContext.audioWorklet.addModule(`.${prefixPath}/micProcessor.js`);
       const micNode = new AudioWorkletNode(audioContext, "mic-processor");
       source.connect(micNode);
       setMicNode(micNode);
@@ -71,8 +77,11 @@ function App() {
       console.log("Opening audio context.");
       initAudioContext();
 
-      console.log(`Opening socket to ${apiAddress}`);
-      const newSocket = io(apiAddress);
+      const address = (new URL(apiAddress)).origin;
+      const path = ((new URL(apiAddress)).pathname !== "/" ? (new URL(apiAddress)).pathname : "") + "/socket.io/";
+
+      console.log(`Opening socket to ${address} with path ${path}`);
+      const newSocket = io(address, { path: path });
       socketRef.current = newSocket;
 
       // Send initial setting values to the server
